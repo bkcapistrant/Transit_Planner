@@ -1,4 +1,4 @@
-# Transit Visualizer 
+# Transit Planner 
 
 A Python toolkit for planning and visualizing exoplanet transit observations from ground-based observatories.
 
