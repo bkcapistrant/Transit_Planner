@@ -21,7 +21,8 @@ from astroplan import EclipsingSystem
 from astroplan import (AltitudeConstraint, AirmassConstraint,
                        AtNightConstraint, MoonSeparationConstraint)
 from astroplan.moon import moon_illumination
-from astropy.coordinates import get_moon
+# from astropy.coordinates import get_moon
+from astropy.coordinates import get_body
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
 
 
@@ -36,7 +37,7 @@ def get_moon_data(observer, target, time):
     illumination = moon_illumination(time)
     
     # Get Moon coordinates from the observer's location
-    moon_coord = get_moon(time, location=observer.location)
+    moon_coord = get_body("moon", time, location=observer.location)
     
     # Calculate angular separation
     # separation = target.coord.separation(moon_coord)
@@ -92,7 +93,7 @@ def evaluate_transit(
     frac_baseline = observable[~in_transit].mean()
 
     # Moon
-    moon = get_moon(times, observer.location)
+    moon = get_body("moon",times, observer.location)
     moon_sep = moon.separation(target.coord).min()
     moon_illum = moon_illumination(mid)
 
