@@ -44,6 +44,9 @@ def get_moon_data(observer, target, time):
     
     return illumination, separation
 
+def get_airmass(time,observer,target):
+    return observer.altaz(time, target).secz
+
 def alt_at(time,observer,target):
     return observer.altaz(time, target).alt
 
@@ -96,6 +99,14 @@ def evaluate_transit(
     # Altitudes
     def alt(t):
         return observer.altaz(t, target).alt
+    
+    def airmass(t):
+        return observer.altaz(t, target).secz
+    
+    airs= {"start": airmass(ingress),
+           "mid": airmass(mid),
+           "end": airmass(egress),
+          }
 
     alts = {
         "start": alt(ingress),
@@ -111,6 +122,7 @@ def evaluate_transit(
         "moon_sep": moon_sep,
         "moon_illum": moon_illum,
         "alts": alts,
+        "airs": airs,
     }
 
 def transit_icon(times, ingress, egress, observable, depth):
@@ -261,6 +273,11 @@ def display_transits(target, mid_transits, ingress_times, egress_times, params, 
                 f"{metrics['alts']['mid'].value:.0f}°<br>"
                 f"{metrics['alts']['end'].value:.0f}°"
             ),
+            "Airmass (S/M/E)": (
+                f"{metrics['airs']['start'].value:.2f}<br>"
+                f"{metrics['airs']['mid'].value:.2f}<br>"
+                f"{metrics['airs']['end'].value:.2f}"
+            ),
             "Transit": icon,
             "% Transit": 100*metrics['frac_transit'],
             "% Baseline": 100*metrics['frac_baseline'],
@@ -380,6 +397,11 @@ def simultaneous_observing(target, mid_transits, ingress_times, egress_times, pa
                 f"{metrics['alts']['mid'].value:.0f}°<br>"
                 f"{metrics['alts']['end'].value:.0f}°"
             ),
+            "Airmass (S/M/E)": (
+                f"{metrics['airs']['start'].value:.2f}<br>"
+                f"{metrics['airs']['mid'].value:.2f}<br>"
+                f"{metrics['airs']['end'].value:.2f}"
+            ),
             f"{event.target.name} Transit": icon,
             
             "% Transit": 100*metrics['frac_transit'],
@@ -392,7 +414,8 @@ def simultaneous_observing(target, mid_transits, ingress_times, egress_times, pa
                 f"{metrics2['moon_illum']:.0%} @ "
                 f"{metrics2['moon_sep'].to(u.deg).value:.0f}°"
             ),
-            
+            # "% Transit": 100*metrics['frac_transit'],
+            # "% Baseline": 100*metrics['frac_baseline'],
             f"% Transit @<br> {comparison_observatory.name}": 100*metrics2['frac_transit'],
             f"% Baseline @<br> {comparison_observatory.name}": 100*metrics2['frac_baseline'],
         })

@@ -33,7 +33,12 @@ The argument `visibility_cut` was set to 90 in this example, to only display tra
 
 - The moon illumination and separation displayed in the **`Moon`** column are calculated from the input observatory at mid-transit time for each given transit. 
 
-- The **`Start-Mid-End`** column gives the ingress, mid-transit, and egress times (hour:minute) listed from top to bottom. The **`Alt (S/M/E)`** column list the target altitude at these times in the same order. 
+- The **`Start-Mid-End`** column gives the ingress, mid-transit, and egress times (hour:minute) listed from top to bottom. 
+
+- The **`Alt (S/M/E)`** column list the target altitude in degrees at the start-mid-end times in the previous column. 
+
+
+- The **`Airmass (S/M/E)`** column list the target airmass at the start-mid-end times. 
 
 - The **`Transit`** column shows a html icon of the visible portion of the target's transit as a simple box transit model. The blue line corresponds to portions of the transit and baseline that are observable based on the input constraints. 
 
