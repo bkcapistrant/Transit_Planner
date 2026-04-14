@@ -66,7 +66,10 @@ An important note here is that the `visibility_cut` argument (still set to 90 in
 
 <!-- <span style="background-color: #000066; border-radius: 5px;">"Moon"</span>  -->
 
+## Single Event 
+After obtaining a list of observable transits using either of these functions, an observer may want to focus on the details of a single event they've decided to observe. The `.single_transit()` function allows you to plot a single row dataframe for one of these events provided the index from the previous dataframes.
 
+The resulting dataframe exactly matches the columns of the `.display_transits()` output dataframe, but with additional metrics for local times, altitudes and airmass values, at the baseline start and end times. These additional baseline start and end metrics are indicated as lower opacity text values falling above and below the ingress and egress times respectively. 
 
 ## Dependencies
 
