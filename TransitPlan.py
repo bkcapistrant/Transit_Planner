@@ -219,8 +219,9 @@ def display_transits(target, mid_transits, ingress_times, egress_times, params, 
         The observatory object from astroplan
     constraints : list
         List of observability constraints from astroplan
-    baseline : Astropy Quantity (time), optional
-        Baseline duration around transit for observability calculations
+    baseline : float (time), optional
+        Baseline duration before and after transit for observability calculations 
+        Should be baseline time in hours desired before and after transit, not the total available baseline
         defaults to 0.5*transit duration if None
     visibility_cut : float, optional
         Percentage of transit visibility to include in output DataFrame
@@ -325,8 +326,9 @@ def simultaneous_observing(target, mid_transits, ingress_times, egress_times, pa
         Second observatory for comparison
     constraints : list
         List of observability constraints from astroplan
-    baseline : Astropy Quantity (time), optional
-        Baseline duration around transit for observability calculations 
+    baseline : float (time), optional
+        Baseline duration before and after transit for observability calculations 
+        Should be baseline time in hours desired before and after transit, not the total available baseline
         defaults to 0.5*transit duration if None
     visibility_cut : float, optional
         Percentage of transit visibility to include in output DataFrame
@@ -433,3 +435,126 @@ def simultaneous_observing(target, mid_transits, ingress_times, egress_times, pa
                 .background_gradient(subset=[f"% Transit @<br> {comparison_observatory.name}",f"% Baseline @<br> {comparison_observatory.name}"],cmap="RdYlGn",vmin=0,vmax=100))
     else:
         return df
+
+def single_transit(target, mid_transits, ingress_times, egress_times, params, observer, constraints, baseline=None, visibility_cut=None,plot=True,event_index=0):
+    """
+    Generate a DataFrame summarizing transit observability for single event determined using either display_transits or simultaneous_observing functions, given target and observatory objects from astroplan.
+
+    Parameters:
+    -----------
+    target : FixedTarget
+        The target object from astroplan
+    mid_transits : list or array of Time objects
+        Mid-transit times
+    ingress_times : list or array of Time objects
+        Ingress times
+    egress_times : list or array of Time objects
+        Egress times
+    params : dict
+        Exoplanet archive dictionary containing 'pl_trandep' (transit depth) and 'sy_vmag' (V magnitude)
+    observer : Observeratory object
+        The observatory object from astroplan
+    constraints : list
+        List of observability constraints from astroplan
+    baseline : float (time), optional
+        Baseline duration before and after transit for observability calculations 
+        Should be baseline time in hours desired before and after transit, not the total available baseline
+        defaults to 0.5*transit duration if None
+    visibility_cut : float, optional
+        Percentage of transit visibility to include in output DataFrame
+    plot : bool, optional
+        If True, display the DataFrame as an HTML table. If False, return the DataFrame.
+    event_index : int
+        Index of the transit event to display (default is 0, but depending on constraints and visibility_cut imposed, this will likely not be 0)
+        Determine using the output of display_transits or simultaneous_observing 
+    Returns:
+    --------
+    df : pandas DataFrame
+        DataFrame summarizing transit observability metrics for single event with additional metrics at the baseline start and end times
+
+    """
+    events = create_transit_events(target, mid_transits, ingress_times, egress_times, params, constraints)
+    print(events)
+    event = events[event_index]
+
+    rows = []
+
+    # for event in events:
+    metrics = evaluate_transit(
+        observer,
+        event.target,
+        event.ingress,
+        event.mid,
+        event.egress,
+        constraints,
+        baseline=baseline,
+        nsamples=200
+    )
+    
+    icon = transit_icon(
+        metrics["times"],
+        event.ingress,
+        event.egress,
+        metrics["observable"],
+        event.depth
+    )
+
+    baseline_start = event.ingress - baseline*u.hour
+    baseline_end = event.egress + baseline*u.hour
+    bair_start = get_airmass(baseline_start, observer, event.target)
+    bair_end = get_airmass(baseline_end, observer, event.target)
+    balt_start = alt_at(baseline_start, observer, event.target)
+    balt_end = alt_at(baseline_end, observer, event.target)
+    
+    rows.append({
+            "Local Evening Date": f"{observer.name}<br>"
+            f"{observing_night_from_sunset(observer, event.mid)}<br>"
+            f"({observer.timezone})",
+            "Moon": (
+                f"{metrics['moon_illum']:.0%} @ "
+                f"{metrics['moon_sep'].to(u.deg).value:.0f}°"
+            ),
+            "Start-Mid-End": (
+                f"<span style='opacity:0.6'>{baseline_start.strftime('%H:%M')}</span><br>"
+                f"{event.ingress.strftime('%H:%M')}<br>"
+                f"{event.mid.strftime('%H:%M')}<br>"
+                f"{event.egress.strftime('%H:%M')}<br>"
+                f"<span style='opacity:0.6'>{baseline_end.strftime('%H:%M')}</span>"
+            ),
+            "Alt (S/M/E)": (
+                f"<span style='opacity:0.6'>{balt_start.value:.0f}°</span><br>"
+                f"{metrics['alts']['start'].value:.0f}°<br>"
+                f"{metrics['alts']['mid'].value:.0f}°<br>"
+                f"{metrics['alts']['end'].value:.0f}°<br>"
+                f"<span style='opacity:0.6'>{balt_end.value:.0f}°</span>"
+            ),
+            "Airmass (S/M/E)": (
+                f"<span style='opacity:0.6'>{bair_start.value:.2f}</span><br>"
+                f"{metrics['airs']['start'].value:.2f}<br>"
+                f"{metrics['airs']['mid'].value:.2f}<br>"
+                f"{metrics['airs']['end'].value:.2f}<br>"
+                f"<span style='opacity:0.6'>{bair_end.value:.2f}</span>"
+            ),
+            "Transit": icon,
+            "% Transit": 100*metrics['frac_transit'],
+            "% Baseline": 100*metrics['frac_baseline'],
+            "V mag": float(event.mag),
+            "Depth (ppt)": float(event.depth)*10,
+            "Target": event.target.name,
+        })
+
+
+    df = pd.DataFrame(rows)
+    if visibility_cut is not None:
+        df = df[df["% Transit"] >= visibility_cut]
+
+    if plot:
+        return (df.style
+                .format({'% Transit':'{:.0f}%','% Baseline':'{:.0f}%','Depth (ppt)':'{:.2f}','V mag':'{:.2f}'})
+                .set_properties(**{'background-color':"#FFFFFF",'color':'black'})
+                .set_table_styles([{"selector":"th.col_heading","props":"text-align:center; font-size:1.5em; background-color: #000066;"}])
+                .background_gradient(subset=['% Transit','% Baseline'],cmap="RdYlGn",vmin=0,vmax=100))
+        # return display(HTML(df.style.set_properties(**{'background-color': "#FFFFFF", 'color': 'black'}).to_html(escape=False, index=False)))
+    else:
+        return df
+    # return display_transits(target, mid_transits, ingress_times, egress_times, params, observer, constraints, baseline=baseline, visibility_cut=visibility_cut)
